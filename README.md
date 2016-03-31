@@ -11,6 +11,7 @@ A python script for fetching IANA Tldlist and parsing NIC website & Whois server
 
 ### Tips: ###
 Script will check if there is a tldlist.txt file at the beginning of downloading the Database.
+
 You can press Y to override existing files.
 
 ### License: ###
