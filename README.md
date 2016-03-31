@@ -14,5 +14,7 @@ Script will check if there is a tldlist.txt file at the beginning of downloading
 
 You can press Y to override existing files.
 
+It will take you about 20 minutes to process the whole script. (Test on a DigitalOcean VPS)
+
 ### License: ###
 MIT License
