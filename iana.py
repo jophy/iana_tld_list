@@ -9,20 +9,37 @@ import re
 import sys
 import json
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
+
+
+class IanaItem:
+    tld: Optional[str] = None
+    dm: Optional[str] = None
+    isIDN: Optional[str] = None
+    tldType: Optional[str] = None
+    nic: Optional[str] = None
+    whois: Optional[str] = None
+    lastUpdate: Optional[str] = None
+    registration: Optional[str] = None
 
 
 class IANA:
+    # all bool flags are default for the original behaviour of the IANA class
     verbose: bool = False
     overwrite: bool = True
     interactive: bool = True
     downloadNew: bool = True
 
+    # allow getting one tld at a time
+    # if we do not process all tlds (20 minutes delay on initial run)
+    #   we can fetch individual tld's one by one
+    autoProcessAll: bool = True
+
     tlds_filename: str = "tlds-alpha-by-domain.txt"
     url: str = f"https://data.iana.org/TLD/{tlds_filename}"
 
     iana_url: str = "https://www.iana.org/domains/root/db/"
-    dir: str = "data"
+    xDir: str = "data"
     tld_list_filename: str = "tldlist.txt"
     tld_json: str = "tld.json"
 
@@ -30,14 +47,15 @@ class IANA:
     tldFilePath: Optional[str] = None
     resultsPathJson: Optional[str] = None
 
-    output_dict: Dict = {}
+    allTlds: List = []
+    outputDict: Dict = {}
 
     def _makePaths(self):
         psep = "/"
 
-        self.resultsPath = self.dir + psep + self.tld_list_filename
-        self.tldFilePath = self.dir + psep + self.tlds_filename
-        self.resultsPathJson = self.dir + psep + self.tld_json
+        self.resultsPath = self.xDir + psep + self.tld_list_filename
+        self.tldFilePath = self.xDir + psep + self.tlds_filename
+        self.resultsPathJson = self.xDir + psep + self.tld_json
 
     def _decideDownLoadAndInteractive(self):
         self.downloadNew: bool = True
@@ -53,43 +71,66 @@ class IANA:
             else:
                 self.downloadNew = True
 
+    def _autoProcessAllTlds(self):
+        self._decideDownLoadAndInteractive()
+
+        if self.downloadNew:
+            self._getTldInfoAllTlds()
+
+        self._saveAllTldsAsJsonToFile()
+
+    def _getAllTldsAsArray(self):
+        tlds: List = []
+        with open(self.tldFilePath, "r") as f:
+            for line in f.readlines():
+                if self.verbose:
+                    print(line, file=sys.stderr)
+
+                if not line.startswith("#"):
+                    tld = line.rstrip().lower()
+                    tlds.append(tld)
+
+        self.allTlds = sorted(tlds)
+
+    def _getTldFile(self):
+        if self.verbose:
+            print(self.url, file=sys.stderr)
+
+        r = requests.get(self.url)
+
+        with open(self.tldFilePath, "w", encoding="utf8") as f:
+            f.write(r.text)
+
+            if self.verbose:
+                print(r.text, file=sys.stderr)
+
+        self._getAllTldsAsArray()
+
     def __init__(
         self,
         dirName: str = "data",
         verbose: bool = False,
         overwrite: bool = False,
         interactive: bool = True,
+        autoProcessAll: bool = True,
     ):
         self.verbose = verbose
         self.overwrite = overwrite
         self.interactive = interactive
+        self.autoProcessAll = autoProcessAll
 
-        self.dir = dirName
+        self.xDir = dirName
+        if not os.path.exists(self.xDir):
+            os.mkdir(self.xDir)
         self._makePaths()
 
-        self._decideDownLoadAndInteractive()
+        self._getTldFile()  # always refresh the tld all file from IANA
 
-        if self.downloadNew:
-            self._initResultsFile()
-            self._getTldFile()
-            self._getTldInfo()
+        # optionally process all tld's automatically or fetch them individually on demand later
+        if self.autoProcessAll:
+            self._autoProcessAllTlds()
 
-        self._outputJSON()
-
-    def _initResultsFile(self):
-        if not os.path.exists(self.dir):
-            os.mkdir(self.dir)
-
-        with open(self.resultsPath, "w", encoding="utf8") as f:
-            f.close()
-
-    def _getTldFile(self):
-        r = requests.get(self.url)
-        with open(self.tldFilePath, "w", encoding="utf8") as f:
-            f.write(r.text)
-            f.close()
-
-    def _fetch_Server(self, tld):
+    def _fetchOneTldFromIanaWeb(self, tld):
         url = f"{self.iana_url}{tld}.html"
 
         n = 0
@@ -105,21 +146,22 @@ class IANA:
                     print(msg, file=sys.stderr)
                     exit(101)
 
-    def _parse(self, tld, content):
+    def _parseDataForOneTld(self, tld, content):
         output = {}
 
         # --------------------------------------
+        k = "tldType"
         if "Generic top-level domain" in content:
-            output["type"] = "gTLD"
+            output[k] = "gTLD"
         elif "Infrastructure top-level domain" in content:
-            output["type"] = "iTLD"
+            output[k] = "iTLD"
         elif "Sponsored top-level domain" in content:
-            output["type"] = "gTLD"  # i.e  .asia
+            output[k] = "gTLD"  # i.e  .asia
         else:
-            output["type"] = "ccTLD"
+            output[k] = "ccTLD"
 
         # --------------------------------------
-        output["tld"] = tld
+        output["tld"] = tld  # this is the non utf-8 tld name
 
         # extract regex patterns with postprocessing
         zz = {
@@ -155,50 +197,57 @@ class IANA:
                 output[k] = f(xx)
 
         # --------------------------------------
-        output["isIDN"] = "False"
+        k = "isIDN"
+        output[k] = "False"
         if tld.startswith("xn--"):
-            output["isIDN"] = "True"
+            output[k] = "True"
+
+        if self.verbose:
+            print(output, file=sys.stderr)
 
         # --------------------------------------
-        return " -- ".join(
+        return output
+
+    def _appendOneTldToREsultsFile(self, data):
+        with open(self.resultsPath, "a", encoding="utf8") as f:
+            f.write(data + "\n")
+
+    def _convertDataToSplitableString(self, output: Dict) -> str:
+        string = " -- ".join(
             [
                 output["tld"],
                 output["dm"],  # utf-8
                 output["isIDN"],
-                output["type"],
+                output["tldType"],
                 output["nic"],
                 output["whois"],
                 output["lastUpdate"],
                 output["registration"],
             ],
         )
+        return string
+
+    def fetchOneTldFromIana(self, tld):
+        content = self._fetchOneTldFromIanaWeb(tld)
+        output = self._parseDataForOneTld(tld, content)
+        return output
 
     def _doOneTld(self, tld: str):
-        content = self._fetch_Server(tld)
-        output = self._parse(tld, content)
+        output = self.getchOneTldFromIana(tld)
+        string = self._convertDataToSplitableString(output)
+        self._appendOneTldToREsultsFile(string)
 
-        if self.verbose:
-            print(output, file=sys.stderr)
-
-        with open(self.resultsPath, "a", encoding="utf8") as f:
-            f.write(output + "\n")
+    def _initResultsFile(self):
+        with open(self.resultsPath, "w", encoding="utf8") as f:
             f.close()
 
-    def _getAllTlds(self):
-        with open(self.tldFilePath, "r", encoding="utf8") as f:
-            tlds = f.readlines()
-            del tlds[0]
-            f.close()
-        return sorted(tlds)
-
-    def _getTldInfo(self):
-        tlds = self._getAllTlds()
-        for i in tlds:
-            tld = i.rstrip().lower()
+    def _getTldInfoAllTlds(self):
+        self._initResultsFile()
+        for tld in self.allTlds:
             self._doOneTld(tld)
 
-    def _fPathReadToDict(self):
-        self.output_dict: Dict = {}
+    def _readResultsPathAndConvertAllToDict(self):
+        self.outputDict: Dict = {}
 
         with open(self.resultsPath, "r", encoding="utf8") as f:
             for i in f.readlines():
@@ -208,48 +257,68 @@ class IANA:
                     xDict["tld"],
                     xDict["dm"],
                     xDict["isIDN"],
-                    xDict["type"],
+                    xDict["tldType"],
                     xDict["nic"],
                     xDict["whois"],
                     xDict["lastUpdate"],
                     xDict["registration"],
                 ) = i.strip().split(" -- ")
 
-                self.output_dict[xDict["dm"]] = xDict
-            f.close()
+                self.outputDict[xDict["dm"]] = xDict
 
-    def _saveDictToJson(self):
-        if self.output_dict.get("NULL"):
-            del self.output_dict["NULL"]
+    def _saveDictToJsonFile(self):
+        if self.outputDict.get("NULL"):
+            del self.outputDict["NULL"]
 
         output_json = json.dumps(
-            self.output_dict,
+            self.outputDict,
             indent=2,
             ensure_ascii=False,
         )
 
         with open(self.resultsPathJson, "w", encoding="utf8") as f:
             f.write(output_json)
-            f.close()
 
-    def _outputJSON(self):
-        self._fPathReadToDict()
-        self._saveDictToJson()
+    def _saveAllTldsAsJsonToFile(self):
+        self._readResultsPathAndConvertAllToDict()
+        self._saveDictToJsonFile()
 
-    def getInfoOnTld(self, tld: str):
+    def getInfoOnOneTld(self, tld: str):
         tld = tld.lower()
-        if not tld.startswith("."):
-            tld = "." + tld
 
-        if tld not in self.output_dict:
-            return None
+        if tld.startswith("."):
+            tld = tld.lstrip(".")
 
-        return self.output_dict[tld]
+        if tld not in self.allTlds:
+            return None, "tldNotFound"
+
+        if tld not in self.outputDict:
+            data = self.fetchOneTldFromIana(tld)
+            self.outputDict[tld] = data
+
+        return self.outputDict[tld], None
 
 
 if __name__ == "__main__":
+
+    verbose = False
+    # verbose = True
+
     i = IANA(
-        verbose=True,
+        verbose=verbose,
         overwrite=True,
         interactive=False,
+        autoProcessAll=False,
     )
+
+    if verbose:
+        print(i.allTlds)
+
+    tlds = [
+        "nl",
+        ".nl",
+    ]
+
+    for tld in tlds:
+        data, status = i.getInfoOnOneTld(tld)
+        print(tld, data, status)
