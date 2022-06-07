@@ -104,17 +104,23 @@ class IANA:
             print(self.url, file=sys.stderr)
 
         # if the file is less then 24 hours old do not refresh unless force is active
-        tt = int(os.path.getmtime(self.tldFilePath))
-        tDiff = int(self.timeEpoch - tt)
-        if self.forceDownloadTld is True or tDiff > self.reloadTldFileTimeInSeconds:
-            if self.verbose:
-                z = ", or forceDownloadTld = True: downloading fresh copy"
-                print(
-                    f"file {self.tldFilePath} older then {tDiff} seconds {z}",
-                    self.tldFilePath,
-                    file=sys.stderr,
-                )
+        download = True
+        if os.path.exists(self.tldFilePath):
+            download = False
 
+            tt = int(os.path.getmtime(self.tldFilePath))
+            tDiff = int(self.timeEpoch - tt)
+
+            if self.forceDownloadTld is True or tDiff > self.reloadTldFileTimeInSeconds:
+                download = True
+                if self.verbose:
+                    z = ", or forceDownloadTld = True: downloading fresh copy"
+                    print(
+                        f"file {self.tldFilePath} older then {tDiff} seconds {z}",
+                        file=sys.stderr,
+                    )
+
+        if download:
             r = requests.get(self.url)
             with open(self.tldFilePath, "w", encoding="utf8") as f:
                 f.write(r.text)
@@ -257,7 +263,7 @@ class IANA:
         return output
 
     def _doOneTld(self, tld: str):
-        output = self.getchOneTldFromIana(tld)
+        output = self.fetchOneTldFromIana(tld)
         string = self._convertDataToSplitableString(output)
         self._appendOneTldToREsultsFile(string)
 
@@ -307,7 +313,7 @@ class IANA:
         self._readResultsPathAndConvertAllToDict()
         self._saveDictToJsonFile()
 
-    def getInfoOnOneTld(self, tld: str):
+    def testTldInList(self, tld):
         tld = tld.lower()
 
         if tld.startswith("."):
@@ -315,12 +321,22 @@ class IANA:
 
         if tld not in self.allTlds:
             return None, "tldNotFound"
+        return tld, None
+
+    def getInfoOnOneTld(self, tld: str):
+        tld, msg = self.testTldInList(tld)
+
+        if msg:
+            return tld, msg
 
         if tld not in self.outputDict:
             data = self.fetchOneTldFromIana(tld)
             self.outputDict[tld] = data
 
         return self.outputDict[tld], None
+
+    def getAllTlds(self) -> List:
+        return self.allTlds
 
 
 if __name__ == "__main__":
