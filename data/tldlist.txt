@@ -718,8 +718,8 @@ living -- .living -- False -- gTLD -- NULL -- NULL -- 2019-08-19 -- 2015-12-10
 lk -- .lk -- False -- ccTLD -- http://www.nic.lk/ -- NULL -- 2017-05-22 -- 1990-06-15
 llc -- .llc -- False -- gTLD -- https://donuts.domains/ -- whois.nic.llc -- 2021-12-02 -- 2018-02-16
 llp -- .llp -- False -- gTLD -- http://uniregistry.link -- whois.uniregistry.net -- 2020-11-03 -- 2019-11-20
-loan -- .loan -- False -- gTLD -- http://nic.loan -- whois.nic.loan -- 2022-05-26 -- 2015-02-05
-loans -- .loans -- False -- gTLD -- http://www.donuts.domains/ -- whois.nic.loans -- 2021-11-02 -- 2014-05-08
+loan -- NULL -- False -- ccTLD -- NULL -- NULL -- NULL -- NULL
+loans -- NULL -- False -- ccTLD -- NULL -- NULL -- NULL -- NULL
 locker -- .locker -- False -- gTLD -- http://www.dish.com -- whois.nic.locker -- 2020-11-17 -- 2016-05-19
 locus -- .locus -- False -- gTLD -- http://nic.locus -- whois.nic.locus -- 2021-11-25 -- 2016-02-26
 loft -- .loft -- False -- gTLD -- http://www.loft.com -- NULL -- 2022-05-26 -- 2016-07-21
@@ -852,7 +852,7 @@ nico -- .nico -- False -- gTLD -- http://nic.nico -- whois.nic.nico -- 2019-08-2
 nike -- .nike -- False -- gTLD -- http://www.nike.com -- NULL -- 2022-05-26 -- 2015-10-29
 nikon -- .nikon -- False -- gTLD -- http://www.nikon.com -- whois.nic.nikon -- 2019-08-16 -- 2015-10-01
 ninja -- .ninja -- False -- gTLD -- http://www.donuts.domains/ -- whois.nic.ninja -- 2021-10-27 -- 2013-12-19
-nissan -- NULL -- False -- ccTLD -- NULL -- NULL -- NULL -- NULL
+nissan -- .nissan -- False -- gTLD -- http://www.gmoregistry.com/en/ -- whois.nic.gmo -- 2019-08-20 -- 2014-07-10
 nissay -- .nissay -- False -- gTLD -- http://www.nissay.co.jp/english/ -- whois.nic.nissay -- 2019-10-05 -- 2016-01-08
 nl -- .nl -- False -- ccTLD -- https://www.sidn.nl/ -- whois.domain-registry.nl -- 2022-05-20 -- 1986-04-25
 no -- .no -- False -- ccTLD -- http://www.norid.no -- whois.norid.no -- 2022-01-14 -- 1987-03-17

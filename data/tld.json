@@ -7199,26 +7199,6 @@
     "lastUpdate": "2020-11-03",
     "registration": "2019-11-20"
   },
-  ".loan": {
-    "tld": "loan",
-    "dm": ".loan",
-    "isIDN": "False",
-    "tldType": "gTLD",
-    "nic": "http://nic.loan",
-    "whois": "whois.nic.loan",
-    "lastUpdate": "2022-05-26",
-    "registration": "2015-02-05"
-  },
-  ".loans": {
-    "tld": "loans",
-    "dm": ".loans",
-    "isIDN": "False",
-    "tldType": "gTLD",
-    "nic": "http://www.donuts.domains/",
-    "whois": "whois.nic.loans",
-    "lastUpdate": "2021-11-02",
-    "registration": "2014-05-08"
-  },
   ".locker": {
     "tld": "locker",
     "dm": ".locker",
@@ -8538,6 +8518,16 @@
     "whois": "whois.nic.ninja",
     "lastUpdate": "2021-10-27",
     "registration": "2013-12-19"
+  },
+  ".nissan": {
+    "tld": "nissan",
+    "dm": ".nissan",
+    "isIDN": "False",
+    "tldType": "gTLD",
+    "nic": "http://www.gmoregistry.com/en/",
+    "whois": "whois.nic.gmo",
+    "lastUpdate": "2019-08-20",
+    "registration": "2014-07-10"
   },
   ".nissay": {
     "tld": "nissay",

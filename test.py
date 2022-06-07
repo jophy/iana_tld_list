@@ -18,7 +18,7 @@ interactive = False
 # if autoProcessAll is True: all tld's will be processed (initial run > 20 minutes)
 autoProcessAll = False
 
-with_test_original = False
+with_test_original = True
 
 dirName = "/tmp/iana_data"
 
@@ -45,5 +45,13 @@ for tld in tlds:
     print(tld, data, status)
 
 if with_test_original:
-    # test the original defaut behaviour
+    # test the original default behaviour
     i = IANA()
+
+    # test the original with options no interact, overwrite all
+    overwrite = True
+    interactive = False
+    i = IANA(
+        overwrite=overwrite,
+        interactive=interactive,
+    )
