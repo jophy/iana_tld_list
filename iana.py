@@ -325,7 +325,7 @@ class IANA:
 if __name__ == "__main__":
 
     verbose = False
-    verbose = True
+    # verbose = True
 
     forceDownloadTld = True
 
