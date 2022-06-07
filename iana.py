@@ -108,8 +108,9 @@ class IANA:
         tDiff = int(self.timeEpoch - tt)
         if self.forceDownloadTld is True or tDiff > self.reloadTldFileTimeInSeconds:
             if self.verbose:
+                z = ", or forceDownloadTld = True: downloading fresh copy"
                 print(
-                    f"file {self.tldFilePath} older then {tDiff} seconds, or forceDownloadTld = True: downloading fresh copy",
+                    f"file {self.tldFilePath} older then {tDiff} seconds {z}",
                     self.tldFilePath,
                     file=sys.stderr,
                 )
