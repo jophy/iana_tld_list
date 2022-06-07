@@ -8,7 +8,7 @@ import os
 import re
 import sys
 import json
-
+import time
 from typing import Optional, Dict, List
 
 
@@ -29,6 +29,7 @@ class IANA:
     overwrite: bool = True
     interactive: bool = True
     downloadNew: bool = True
+    forceDownloadTld: bool = False
 
     # allow getting one tld at a time
     # if we do not process all tlds (20 minutes delay on initial run)
@@ -49,6 +50,10 @@ class IANA:
 
     allTlds: List = []
     outputDict: Dict = {}
+    timeEpoch: int = 0
+
+    # 24 hours in seconds
+    reloadTldFileTimeInSeconds = 24 * 60 * 60
 
     def _makePaths(self):
         psep = "/"
@@ -83,11 +88,13 @@ class IANA:
         tlds: List = []
         with open(self.tldFilePath, "r") as f:
             for line in f.readlines():
+                line = line.rstrip()
+
                 if self.verbose:
                     print(line, file=sys.stderr)
 
                 if not line.startswith("#"):
-                    tld = line.rstrip().lower()
+                    tld = line.lower()
                     tlds.append(tld)
 
         self.allTlds = sorted(tlds)
@@ -96,13 +103,23 @@ class IANA:
         if self.verbose:
             print(self.url, file=sys.stderr)
 
-        r = requests.get(self.url)
-
-        with open(self.tldFilePath, "w", encoding="utf8") as f:
-            f.write(r.text)
-
+        # if the file is less then 24 hours old do not refresh unless force is active
+        tt = int(os.path.getmtime(self.tldFilePath))
+        tDiff = int(self.timeEpoch - tt)
+        if self.forceDownloadTld is True or tDiff > self.reloadTldFileTimeInSeconds:
             if self.verbose:
-                print(r.text, file=sys.stderr)
+                print(
+                    f"file {self.tldFilePath} older then {tDiff} seconds, or forceDownloadTld = True: downloading fresh copy",
+                    self.tldFilePath,
+                    file=sys.stderr,
+                )
+
+            r = requests.get(self.url)
+            with open(self.tldFilePath, "w", encoding="utf8") as f:
+                f.write(r.text)
+
+                if self.verbose:
+                    print(r.text, file=sys.stderr)
 
         self._getAllTldsAsArray()
 
@@ -113,11 +130,17 @@ class IANA:
         overwrite: bool = False,
         interactive: bool = True,
         autoProcessAll: bool = True,
+        forceDownloadTld: bool = False,
     ):
         self.verbose = verbose
         self.overwrite = overwrite
         self.interactive = interactive
         self.autoProcessAll = autoProcessAll
+        self.forceDownloadTld = forceDownloadTld
+
+        self.timeEpoch = int(time.time())
+        if self.verbose:
+            print(f"time epoch: {self.timeEpoch}", file=sys.stderr)
 
         self.xDir = dirName
         if not os.path.exists(self.xDir):
@@ -302,13 +325,19 @@ class IANA:
 if __name__ == "__main__":
 
     verbose = False
-    # verbose = True
+    verbose = True
+
+    forceDownloadTld = True
+
+    dirName = "/tmp/iana_data"
 
     i = IANA(
+        dirName=dirName,
         verbose=verbose,
         overwrite=True,
         interactive=False,
         autoProcessAll=False,
+        forceDownloadTld=forceDownloadTld,
     )
 
     if verbose:
